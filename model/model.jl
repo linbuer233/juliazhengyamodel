@@ -3,7 +3,7 @@
 #        m=20：      纬向格点数
 #        n=16：      经向格点数
 #        d：         网格距
-#        rm：        地图放大系数
+#        rm1：       地图放大系数
 #        f：         地转参数
 #        w：         工作数组
 #        cla，clo：  区域中心纬度和经度
@@ -51,67 +51,67 @@ function cmf(d, cla, m, n)
     yj0 = r / d + (n - 1) / 2
 
     # 求各格点至北极点的距离rl,(xj,yi)为模式各格点在地图坐标系中的位置
-    xi1 = transpose(reshape(repeat(range(0, 19, step = 1), 16), 20, 16)) # 先生成一个20列的向量，复制16行，reshape，最后转置
-    yj1 = reshape(repeat(range(0, 15, step = 1), 20), 16, 20)
+    xi1 = transpose(reshape(repeat(range(0, 19, step=1), 16), 20, 16)) # 先生成一个20列的向量，复制16行，reshape，最后转置
+    yj1 = reshape(repeat(range(0, 15, step=1), 20), 16, 20)
     xi = xi0 .+ xi1
     yj = yj0 .- yj1
 
     rl = (.√(xi .^ 2 .+ yj .^ 2)) .* d
 
-    # 求放大系数rm和科氏参数f
+    # 求放大系数rm1和科氏参数f
     w2 = (rl ./ rlq) .^ w1
     sinl = (1 .- w2) ./ (w2 .+ 1)
-    rm = rk .* rl ./ (a .* .√(1 .- sinl .^ 2))
+    rm1 = rk .* rl ./ (a .* .√(1 .- sinl .^ 2))
     f = 1.4584e-4 .* sinl
 
-    return rm, f
+    return rm1, f
 end
 
 # 计算地转风初值的子程序
-# rm 地图放大系数
+# rm1 地图放大系数
 # f  地转参数
 # d  格点距
-function cgw(za, rm, f, d, m, n)
+function cgw(za, rm1, f, d, m, n)
     # 偏H 项拿 ΔH 代替 ；偏x和偏y 项拿 网格距 d 代替 
     # 四个角上的点
     ## 右下
-    ua[n, m] = -(rm[n, m] * 9.8) * (za[n-1, m] - za[n, m]) / (f[n, m] * d)
-    va[n, m] = (rm[n, m] * 9.8) * (za[n, m-1] - za[n, m]) / (f[n, m] * d)
+    ua[n, m] = -(rm1[n, m] * 9.8) * (za[n-1, m] - za[n, m]) / (f[n, m] * d)
+    va[n, m] = (rm1[n, m] * 9.8) * (za[n, m-1] - za[n, m]) / (f[n, m] * d)
     ## 右上
-    ua[1, m] = -(rm[1, m] * 9.8) * (za[2, m] - za[1, m]) / (f[1, m] * d)
-    va[1, m] = (rm[1, m] * 9.8) * (za[1, m-1] - za[1, m]) / (f[1, m] * d)
+    ua[1, m] = -(rm1[1, m] * 9.8) * (za[2, m] - za[1, m]) / (f[1, m] * d)
+    va[1, m] = (rm1[1, m] * 9.8) * (za[1, m-1] - za[1, m]) / (f[1, m] * d)
     ## 左上
-    ua[1, 1] = -(rm[1, 1] * 9.8) * (za[2, 1] - za[1, 1]) / (f[1, 1] * d)
-    va[1, 1] = (rm[1, 1] * 9.8) * (za[1, 2] - za[1, 1]) / (f[1, 1] * d)
+    ua[1, 1] = -(rm1[1, 1] * 9.8) * (za[2, 1] - za[1, 1]) / (f[1, 1] * d)
+    va[1, 1] = (rm1[1, 1] * 9.8) * (za[1, 2] - za[1, 1]) / (f[1, 1] * d)
     ## 左下
-    ua[n, 1] = -(rm[n, 1] * 9.8) * (za[n-1, 1] - za[n, 1]) / (f[n, 1] * d)
-    va[n, 1] = (rm[n, 1] * 9.8) * (za[n, 2] - za[n, 1]) / (f[n, 1] * d)
+    ua[n, 1] = -(rm1[n, 1] * 9.8) * (za[n-1, 1] - za[n, 1]) / (f[n, 1] * d)
+    va[n, 1] = (rm1[n, 1] * 9.8) * (za[n, 2] - za[n, 1]) / (f[n, 1] * d)
 
     # 边界点
     # 左右边界
     for j = 1:m-1:m
-        ua[2:n-1, j] = -(rm[2:n-1, j] .* 9.8) ./ f[2:n-1, j] .* ((za[3:n, j] .- za[1:n-2, j]) ./ 2) ./ d
+        ua[2:n-1, j] = -(rm1[2:n-1, j] .* 9.8) ./ f[2:n-1, j] .* ((za[3:n, j] .- za[1:n-2, j]) ./ 2) ./ d
         if j == 1
-            va[2:n-1, j] = (rm[2:n-1, j] .* 9.8) ./ f[2:n-1, j] .* (za[2:n-1, j+1] .- za[2:n-1, j]) ./ d
+            va[2:n-1, j] = (rm1[2:n-1, j] .* 9.8) ./ f[2:n-1, j] .* (za[2:n-1, j+1] .- za[2:n-1, j]) ./ d
         end
         if j == m
-            va[2:n-1, j] = (rm[2:n-1, j] .* 9.8) ./ f[2:n-1, j] .* (za[2:n-1, j-1] .- za[2:n-1, j]) ./ d
+            va[2:n-1, j] = (rm1[2:n-1, j] .* 9.8) ./ f[2:n-1, j] .* (za[2:n-1, j-1] .- za[2:n-1, j]) ./ d
         end
     end
     # 上下边界
     for i = 1:n-1:n
-        va[i, 2:m-1] = (rm[i, 2:m-1] .* 9.8) ./ f[i, 2:m-1] .* ((za[i, 3:m] .- za[i, 1:m-2]) ./ 2) ./ d
+        va[i, 2:m-1] = (rm1[i, 2:m-1] .* 9.8) ./ f[i, 2:m-1] .* ((za[i, 3:m] .- za[i, 1:m-2]) ./ 2) ./ d
         if i == 1
-            ua[i, 2:m-1] = -(rm[i, 2:m-1] .* 9.8) ./ f[i, 2:m-1] .* (za[i+1, 2:m-1] .- za[i, 2:m-1]) ./ d
+            ua[i, 2:m-1] = -(rm1[i, 2:m-1] .* 9.8) ./ f[i, 2:m-1] .* (za[i+1, 2:m-1] .- za[i, 2:m-1]) ./ d
         end
         if i == n
-            ua[i, 2:m-1] = -(rm[i, 2:m-1] .* 9.8) ./ f[i, 2:m-1] .* (za[i-1, 2:m-1] .- za[i, 2:m-1]) ./ d
+            ua[i, 2:m-1] = -(rm1[i, 2:m-1] .* 9.8) ./ f[i, 2:m-1] .* (za[i-1, 2:m-1] .- za[i, 2:m-1]) ./ d
         end
     end
 
     # 区域内点
-    ua[2:n-1, 2:m-1] = -(rm[2:n-1, 2:m-1] .* 9.8) ./ f[2:n-1, 2:m-1] .* ((za[3:n, 2:m-1] .- za[1:n-2, 2:m-1]) ./ 2) ./ d
-    va[2:n-1, 2:m-1] = (rm[2:n-1, 2:m-1] .* 9.8) ./ f[2:n-1, 2:m-1] .* ((za[2:n-1, 3:m] .- za[2:n-1, 1:m-2]) ./ 2) ./ d
+    ua[2:n-1, 2:m-1] = -(rm1[2:n-1, 2:m-1] .* 9.8) ./ f[2:n-1, 2:m-1] .* ((za[3:n, 2:m-1] .- za[1:n-2, 2:m-1]) ./ 2) ./ d
+    va[2:n-1, 2:m-1] = (rm1[2:n-1, 2:m-1] .* 9.8) ./ f[2:n-1, 2:m-1] .* ((za[2:n-1, 3:m] .- za[2:n-1, 1:m-2]) ./ 2) ./ d
     return ua, va
 end
 
@@ -129,49 +129,49 @@ function tbv(ub, vb, zb, ua, va, za, m, n)
 end
 
 # 时间积分
-# rm：地图放大系数
+# rm1：地图放大系数
 # f： 地转参数
 # d： 格点距
 # dt：时间步长
 # zo：为了减小重力惯性外波的波速，增加差分格式的稳定性而引入的位势高度。
-function ti(ua, va, za, ub, vb, zb, uc, vc, zc, rm, f, d, dt, zo, m, n)
+function ti(ua, va, za, ub, vb, zb, uc, vc, zc, rm1, f, d, dt, zo, m, n)
     c = 1 / (4 * d)
-    e = -c .* rm[2:n-1, 2:m-1] .* ((ub[2:n-1, 3:m] .+ ub[2:n-1, 2:m-1]) .*
-                                   (ub[2:n-1, 3:m] .- ub[2:n-1, 2:m-1]) .+
-                                   (ub[2:n-1, 2:m-1] .+ ub[2:n-1, 1:m-2]) .*
-                                   (ub[2:n-1, 2:m-1] .- ub[2:n-1, 1:m-2]) .+
-                                   (vb[1:n-2, 2:m-1] .+ vb[2:n-1, 2:m-1]) .*
-                                   (ub[2:n-1, 2:m-1] .- ub[1:n-2, 2:m-1]) .+
-                                   (vb[2:n-1, 2:m-1] .+ vb[3:n, 2:m-1]) .*
-                                   (ub[3:n, 2:m-1] .- ub[2:n-1, 2:m-1]) .+ 19.6 .*
-                                                                           (zb[2:n-1, 3:m] .- zb[2:n-1, 1:m-2])) .+
+    e = -c .* rm1[2:n-1, 2:m-1] .* ((ub[2:n-1, 3:m] .+ ub[2:n-1, 2:m-1]) .*
+                                    (ub[2:n-1, 3:m] .- ub[2:n-1, 2:m-1]) .+
+                                    (ub[2:n-1, 2:m-1] .+ ub[2:n-1, 1:m-2]) .*
+                                    (ub[2:n-1, 2:m-1] .- ub[2:n-1, 1:m-2]) .+
+                                    (vb[1:n-2, 2:m-1] .+ vb[2:n-1, 2:m-1]) .*
+                                    (ub[2:n-1, 2:m-1] .- ub[1:n-2, 2:m-1]) .+
+                                    (vb[2:n-1, 2:m-1] .+ vb[3:n, 2:m-1]) .*
+                                    (ub[3:n, 2:m-1] .- ub[2:n-1, 2:m-1]) .+ 19.6 .*
+                                                                            (zb[2:n-1, 3:m] .- zb[2:n-1, 1:m-2])) .+
         f[2:n-1, 2:m-1] .* vb[2:n-1, 2:m-1]
     #------------------------------------------------
     uc[2:n-1, 2:m-1] = ua[2:n-1, 2:m-1] .+ (e .* dt)
     #------------------------------------------------
-    g = -c .* rm[2:n-1, 2:m-1] .* ((ub[2:n-1, 3:m] .+ ub[2:n-1, 2:m-1]) .*
-                                   (vb[2:n-1, 3:m] .- vb[2:n-1, 2:m-1]) .+
-                                   (ub[2:n-1, 2:m-1] .+ ub[2:n-1, 1:m-2]) .*
-                                   (vb[2:n-1, 2:m-1] .- vb[2:n-1, 1:m-2]) .+
-                                   (vb[1:n-2, 2:m-1] .+ vb[2:n-1, 2:m-1]) .*
-                                   (vb[2:n-1, 2:m-1] .- vb[1:n-2, 2:m-1]) .+
-                                   (vb[2:n-1, 2:m-1] .+ vb[3:n, 2:m-1]) .*
-                                   (vb[3:n, 2:m-1] .- vb[2:n-1, 2:m-1]) .+ 19.6 .*
-                                                                           (zb[3:n, 2:m-1] .- zb[1:n-2, 2:m-1])) .-
+    g = -c .* rm1[2:n-1, 2:m-1] .* ((ub[2:n-1, 3:m] .+ ub[2:n-1, 2:m-1]) .*
+                                    (vb[2:n-1, 3:m] .- vb[2:n-1, 2:m-1]) .+
+                                    (ub[2:n-1, 2:m-1] .+ ub[2:n-1, 1:m-2]) .*
+                                    (vb[2:n-1, 2:m-1] .- vb[2:n-1, 1:m-2]) .+
+                                    (vb[1:n-2, 2:m-1] .+ vb[2:n-1, 2:m-1]) .*
+                                    (vb[2:n-1, 2:m-1] .- vb[1:n-2, 2:m-1]) .+
+                                    (vb[2:n-1, 2:m-1] .+ vb[3:n, 2:m-1]) .*
+                                    (vb[3:n, 2:m-1] .- vb[2:n-1, 2:m-1]) .+ 19.6 .*
+                                                                            (zb[3:n, 2:m-1] .- zb[1:n-2, 2:m-1])) .-
         f[2:n-1, 2:m-1] .* ub[2:n-1, 2:m-1]
     #--------------------------------------------------
     vc[2:n-1, 2:m-1] = va[2:n-1, 2:m-1] .+ g .* dt
     #--------------------------------------------------
-    h = -c .* rm[2:n-1, 2:m-1] .* ((ub[2:n-1, 3:m] .+ ub[2:n-1, 2:m-1]) .*
-                                   (zb[2:n-1, 3:m] .- zb[2:n-1, 2:m-1]) .+
-                                   (ub[2:n-1, 2:m-1] .+ ub[2:n-1, 1:m-2]) .*
-                                   (zb[2:n-1, 2:m-1] .- zb[2:n-1, 1:m-2]) .+
-                                   (vb[1:n-2, 2:m-1] .+ vb[2:n-1, 2:m-1]) .*
-                                   (zb[2:n-1, 2:m-1] .- zb[1:n-2, 2:m-1]) .+
-                                   (vb[2:n-1, 2:m-1] .+ vb[3:n, 2:m-1]) .*
-                                   (zb[3:n, 2:m-1] .- zb[2:n-1, 2:m-1]) .+ 2 .*
-                                                                           (zb[2:n-1, 2:m-1] .- zo) .* (ub[2:n-1, 3:m] .- ub[2:n-1, 1:m-2] .+
-                                                                                                        vb[3:n, 2:m-1] .- vb[1:n-2, 2:m-1]))
+    h = -c .* rm1[2:n-1, 2:m-1] .* ((ub[2:n-1, 3:m] .+ ub[2:n-1, 2:m-1]) .*
+                                    (zb[2:n-1, 3:m] .- zb[2:n-1, 2:m-1]) .+
+                                    (ub[2:n-1, 2:m-1] .+ ub[2:n-1, 1:m-2]) .*
+                                    (zb[2:n-1, 2:m-1] .- zb[2:n-1, 1:m-2]) .+
+                                    (vb[1:n-2, 2:m-1] .+ vb[2:n-1, 2:m-1]) .*
+                                    (zb[2:n-1, 2:m-1] .- zb[1:n-2, 2:m-1]) .+
+                                    (vb[2:n-1, 2:m-1] .+ vb[3:n, 2:m-1]) .*
+                                    (zb[3:n, 2:m-1] .- zb[2:n-1, 2:m-1]) .+ 2 .*
+                                                                            (zb[2:n-1, 2:m-1] .- zo) .* (ub[2:n-1, 3:m] .- ub[2:n-1, 1:m-2] .+
+                                                                                                         vb[3:n, 2:m-1] .- vb[1:n-2, 2:m-1]))
 
     #---------------------------------------------------
     zc[2:n-1, 2:m-1] = za[2:n-1, 2:m-1] .+ h .* dt
@@ -249,15 +249,15 @@ end
     println("#-----------欢迎使用正压原始方程模式----------#")
     println("\n")
     println("读入原始场......")
-    ua = Array(CSV.read("Input\\ua.dat", DataFrame, header = false, delim = ' ', ignorerepeated = true, types = Float64))
-    va = Array(CSV.read("Input\\va.dat", DataFrame, header = false, delim = ' ', ignorerepeated = true, types = Float64))
-    za = Array(CSV.read("Input\\za.dat", DataFrame, header = false, delim = ' ', ignorerepeated = true, types = Float64))
+    ua = Array(CSV.read("./Input/ua.dat", DataFrame, header=false, delim=' ', ignorerepeated=true, types=Float64))
+    va = Array(CSV.read("./Input/va.dat", DataFrame, header=false, delim=' ', ignorerepeated=true, types=Float64))
+    za = Array(CSV.read("./Input/za.dat", DataFrame, header=false, delim=' ', ignorerepeated=true, types=Float64))
 
     # 计算放大系数和地转参数,并写入数据文件中
     print("\n", "计算每个格点上的地图放大系数和地转参数，并写入对应输出文件......", "\n")
-    rm, f = cmf(d, cla, m, n)  # 计算放大系数和地转参数子程序
-    CSV.write("Output\\rm.dat", Tables.table(round.(rm, digits = 6)), header = false, delim = '\t', newline = '\n')
-    CSV.write("Output\\f.dat", Tables.table(round.(f, digits = 6)), header = false, delim = '\t', newline = '\n')
+    rm1, f = cmf(d, cla, m, n)  # 计算放大系数和地转参数子程序
+    CSV.write("./Output/rm1.dat", Tables.table(round.(rm1, digits=6)), header=false, delim='\t', newline='\n')
+    CSV.write("./Output/f.dat", Tables.table(round.(f, digits=6)), header=false, delim='\t', newline='\n')
 
     # 输入参数，选择是否静力初始化
     print("\n", "静力初始化选项(0表示不进行静力初始化、1表示进行静力初始化)，请输入:", "\n")
@@ -267,7 +267,7 @@ end
         if ni == 1
             # 计算地转风初值
             print("进行静力初始化，由高度场求出风场......", "\n")
-            global ua, va = cgw(za, rm, f, d, m, n)  # 地转风计算子程序
+            global ua, va = cgw(za, rm1, f, d, m, n)  # 地转风计算子程序
             # CSV.write("Output\\ub.dat", Tables.table(round.(ua, digits = 6)), header = false, delim = '\t', newline = '\n')
             # CSV.write("Output\\vb.dat", Tables.table(round.(va, digits = 6)), header = false, delim = '\t', newline = '\n')
             break
@@ -279,8 +279,8 @@ end
         end
     end
 
-    CSV.write("Output\\ub1.dat", Tables.table(round.(ua, digits = 6)), header = false, delim = '\t', newline = '\n')
-    CSV.write("Output\\vb1.dat", Tables.table(round.(va, digits = 6)), header = false, delim = '\t', newline = '\n')
+    CSV.write("./Output/ub1.dat", Tables.table(round.(ua, digits=6)), header=false, delim='\t', newline='\n')
+    CSV.write("./Output/vb1.dat", Tables.table(round.(va, digits=6)), header=false, delim='\t', newline='\n')
     # 选择参数，选择平滑方式
     print("\n", "平滑选项:(0表示不进行平滑、1表示进行正平滑、2表示进行正逆平滑)，请输入:", "\n")
     while true
@@ -302,14 +302,14 @@ end
     # 开始预报
     print("开始12小时预报......", "\n")
 
-    for na in range(1, 2, step = 1)
+    for na in range(1, 2, step=1)
         global ua, va, za, ub, vb, zb, uc, vc, zc
         local nb = 0
         # 欧拉后差积分1小时 积分步长 Δt ≈ 10 分钟
-        for nn in range(1, 6, step = 1)
+        for nn in range(1, 6, step=1)
             # global ua, va, za, ub, vb, zb
-            ub, vb, zb = ti(ua, va, za, ua, va, za, ub, vb, zb, rm, f, d, dt, zo, m, n)
-            ua, va, za = ti(ua, va, za, ub, vb, zb, ua, va, za, rm, f, d, dt, zo, m, n)
+            ub, vb, zb = ti(ua, va, za, ua, va, za, ub, vb, zb, rm1, f, d, dt, zo, m, n)
+            ua, va, za = ti(ua, va, za, ub, vb, zb, ua, va, za, rm1, f, d, dt, zo, m, n)
             nb += 1
         end
         # 边界平滑
@@ -318,9 +318,9 @@ end
         va = ssbp(va, s, m, n)
 
         # 前差积分半步
-        ub, vb, zb = ti(ua, va, za, ua, va, za, ub, vb, zb, rm, f, d, c1, zo, m, n)
+        ub, vb, zb = ti(ua, va, za, ua, va, za, ub, vb, zb, rm1, f, d, c1, zo, m, n)
         # 中央差积分半步
-        uc, vc, zc = ti(ua, va, za, ub, vb, zb, uc, vc, zc, rm, f, d, dt, zo, m, n)
+        uc, vc, zc = ti(ua, va, za, ub, vb, zb, uc, vc, zc, rm1, f, d, dt, zo, m, n)
         nb += 1
         # 交换数组
         ub = uc
@@ -329,7 +329,7 @@ end
 
         # 中央差积分一步，共积分11个小时
         for nn = 1:66
-            uc, vc, zc = ti(ua, va, za, ub, vb, zb, uc, vc, zc, rm, f, d, c2, zo, m, n)
+            uc, vc, zc = ti(ua, va, za, ub, vb, zb, uc, vc, zc, rm1, f, d, c2, zo, m, n)
             nb += 1
             #打印积分步数，na为大循环，nb为小循环
             print("大循环na=", na, "    小循环nb=", nb, "\n")
@@ -375,9 +375,9 @@ end
     end
     # 存放预报结果
     print("输出预报结果.......", "\n")
-    CSV.write("Output\\uc.dat", Tables.table(round.(uc, digits = 6)), header = false, delim = '\t', newline = '\n')
-    CSV.write("Output\\vc.dat", Tables.table(round.(vc, digits = 6)), header = false, delim = '\t', newline = '\n')
-    CSV.write("Output\\zc.dat", Tables.table(zc), header = false, delim = '\t')
+    CSV.write("./Output/uc.dat", Tables.table(round.(uc, digits=6)), header=false, delim='\t', newline='\n')
+    CSV.write("./Output/vc.dat", Tables.table(round.(vc, digits=6)), header=false, delim='\t', newline='\n')
+    CSV.write("./Output/zc.dat", Tables.table(zc), header=false, delim='\t')
     print("！！！预报结束！！！")
     tend = now()
     print(tend - tstart)
